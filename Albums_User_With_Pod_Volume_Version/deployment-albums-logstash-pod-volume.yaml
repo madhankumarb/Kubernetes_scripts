@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: albums-ws
+  name: albums-ws
+  namespace: default
+spec:
+  replicas: 3
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate 
+  selector:
+    matchLabels:
+      app: albums-ws
+  template:
+    metadata:
+      labels:
+        app: albums-ws
+    spec:
+      containers:
+      - name: albums-ws
+        image: madhanbadridocker/albums-microservice	  
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8013			
+        env:
+        - name: spring.profiles.active
+          value: k8s
+        - name: spring.rabbitmq.host
+          value: rabbit-mq
+        - name: spring.rabbitmq.username
+          valueFrom:
+            configMapKeyRef:
+              key: spring.rabbitmq.username
+              name: config-server-config
+        - name: spring.rabbitmq.password
+          valueFrom: 
+            secretKeyRef:
+              key: spring.rabbitmq.password
+              name: config-server-secrets			  
+        - name: spring.cloud.config.uri
+          value: http://config-server:8012		
+        volumeMounts:
+        - name: api-logs-albums
+          mountPath: /api-logs
+      - name: logstash
+        image: madhanbadridocker/albums-microservice-logstash:0.0.2	  
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5044	
+        volumeMounts:
+        - name: api-logs-albums
+          mountPath: /api-logs		
+      volumes:
+      - name: api-logs-albums
+        emptyDir: {}	  
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: albums-ws
+  name: albums-ws
+  namespace: default
+spec:
+  ports:
+  - name: "8013"
+    port: 8013
+    targetPort: 8013	
+  selector:
+    app: albums-ws
+  sessionAffinity: None
+  type: ClusterIP	  

@@ -1,0 +1,113 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-disk-user
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-pv-user
+spec:
+  capacity:
+    storage: 500Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-disk-user
+  local:
+    path: /mnt/disks/user
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - my-node <worker node1 hostname>
+---		  
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: user-ws
+  name: user-ws
+  namespace: default
+spec:
+  serviceName: user-ws
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate  
+  selector:
+    matchLabels:
+      app: user-ws
+  template:
+    metadata:
+      labels:
+        app: user-ws
+    spec:
+      containers:
+      - name: user-ws
+        image: madhanbadridocker/users-microservice 
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8014			
+        env:
+        - name: spring.profiles.active
+          value: k8s
+        - name: spring.rabbitmq.host
+          value: rabbit-mq
+        - name: spring.rabbitmq.username
+          valueFrom:
+            configMapKeyRef:
+              key: spring.rabbitmq.username
+              name: config-server-config
+        - name: spring.rabbitmq.password
+          valueFrom: 
+            secretKeyRef:
+              key: spring.rabbitmq.password
+              name: config-server-secrets			  
+        - name: spring.cloud.config.uri
+          value: http://config-server:8012		
+        volumeMounts:
+        - name: api-logs-users
+          mountPath: /api-logs
+      - name: logstash
+        image: madhanbadridocker/users-microservice-logstash:0.0.2	  
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5044	
+        volumeMounts:
+        - name: api-logs-users
+          mountPath: /api-logs
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+  volumeClaimTemplates:
+  - metadata:
+      name: api-logs-users
+#      annotations:
+#        volume.beta.kubernetes.io/storage-class: disk
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: local-disk-user	  
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: user-ws
+  name: user-ws
+  namespace: default
+spec:
+  ports:
+  - name: "8014"
+    port: 8014
+    targetPort: 8014	
+  selector:
+    app: user-ws
+  sessionAffinity: None
+  type: ClusterIP	  

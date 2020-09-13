@@ -1,0 +1,65 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: zuul
+  name: zuul
+  namespace: default
+spec:
+  replicas: 1
+  minReadySeconds: 45
+  selector:
+    matchLabels:
+      app: zuul
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: zuul
+    spec:
+      containers:
+      - name: zuul
+        image: madhanbadridocker/zuul-api-gateway:0.0.2	  
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8011			
+        env:
+        - name: spring.profiles.active
+          value: k8s
+        - name: spring.rabbitmq.host
+          value: rabbit-mq
+        - name: spring.rabbitmq.username
+          valueFrom:
+            configMapKeyRef:
+              key: spring.rabbitmq.username
+              name: config-server-config
+        - name: spring.rabbitmq.password
+          valueFrom: 
+            secretKeyRef:
+              key: spring.rabbitmq.password
+              name: config-server-secrets			  
+        - name: spring.cloud.config.uri
+          value: http://config-server:8012		  
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: zuul
+  name: zuul
+  namespace: default
+spec:
+  ports:
+  - name: "8011"
+    port: 8011
+    targetPort: 8011	
+  selector:
+    app: zuul
+  sessionAffinity: None
+  type: LoadBalancer	  

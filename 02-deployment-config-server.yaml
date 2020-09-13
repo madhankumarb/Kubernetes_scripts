@@ -1,0 +1,80 @@
+apiVersion: v1
+data:
+  spring.rabbitmq.username: photoappconfigrefresh
+kind: ConfigMap
+metadata:
+  name: config-server-config
+  namespace: default
+---
+apiVersion: v1
+data:
+  spring.rabbitmq.password: U2tvZGFjYXIxIQ==
+kind: Secret
+metadata:
+  name: config-server-secrets
+  namespace: default
+type: Opaque
+---  
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: config-server
+  name: config-server
+  namespace: default
+spec:
+  replicas: 1
+  minReadySeconds: 45
+  selector:
+    matchLabels:
+      app: config-server
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: config-server
+    spec:
+      containers:
+      - name: config-server
+        image: madhanbadridocker/config-server:latest	  
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8012			
+        env:
+        - name: spring.profiles.active
+          value: k8s
+        - name: spring.rabbitmq.host
+          value: rabbit-mq
+        - name: spring.rabbitmq.username
+          valueFrom:
+            configMapKeyRef:
+              key: spring.rabbitmq.username
+              name: config-server-config
+        - name: spring.rabbitmq.password
+          valueFrom: 
+            secretKeyRef:
+              key: spring.rabbitmq.password
+              name: config-server-secrets			    
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: config-server
+  name: config-server
+  namespace: default
+spec:
+  ports:
+  - name: "8012"
+    port: 8012
+    targetPort: 8012	
+  selector:
+    app: config-server
+  sessionAffinity: None
+  type: LoadBalancer	  

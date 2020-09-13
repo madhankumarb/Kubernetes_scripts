@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: mysql-database-data-volume
+  name: mysql-database-data-volume
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+status: {}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: mysql
+  name: mysql
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - env:
+        - name: MYSQL_DATABASE
+          value: photo_app
+        - name: MYSQL_PASSWORD
+          value: Skodacar1!
+        - name: MYSQL_ROOT_PASSWORD
+          value: photoappuser
+        - name: MYSQL_USER
+          value: photoappuser
+        image: mysql:5.7
+        args:
+          - "--ignore-db-dir=lost+found"
+        name: mysql
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: mysql-database-data-volume
+      restartPolicy: Always
+      volumes:
+      - name: mysql-database-data-volume
+        persistentVolumeClaim:
+          claimName: mysql-database-data-volume
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: mysql
+  name: mysql
+  namespace: default
+spec:
+  ports:
+  - name: "3306"
+    port: 3306
+    targetPort: 3306	
+  selector:
+    app: mysql
+  sessionAffinity: None
+  type: ClusterIP	  

@@ -1,0 +1,113 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: local-disk-albums
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-pv-albums
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-disk-albums
+  local:
+    path: /mnt/disks/albums
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - my-node <worker node1 hostname>
+---		  
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: albums-ws
+  name: albums-ws
+  namespace: default
+spec:
+  serviceName: albums-ws
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate  
+  selector:
+    matchLabels:
+      app: albums-ws
+  template:
+    metadata:
+      labels:
+        app: albums-ws
+    spec:
+      containers:
+      - name: albums-ws
+        image: madhanbadridocker/albums-microservice:0.0.1	  
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8013			
+        env:
+        - name: spring.profiles.active
+          value: k8s
+        - name: spring.rabbitmq.host
+          value: rabbit-mq
+        - name: spring.rabbitmq.username
+          valueFrom:
+            configMapKeyRef:
+              key: spring.rabbitmq.username
+              name: config-server-config
+        - name: spring.rabbitmq.password
+          valueFrom: 
+            secretKeyRef:
+              key: spring.rabbitmq.password
+              name: config-server-secrets			  
+        - name: spring.cloud.config.uri
+          value: http://config-server:8012		
+        volumeMounts:
+        - name: api-logs-albums
+          mountPath: /api-logs
+      - name: logstash
+        image: madhanbadridocker/albums-microservice-logstash:0.0.2	  
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5044	
+        volumeMounts:
+        - name: api-logs-albums
+          mountPath: /api-logs		
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+  volumeClaimTemplates:
+  - metadata:
+      name: api-logs-albums
+#      annotations:
+#        volume.beta.kubernetes.io/storage-class: disk
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: local-disk-albums  
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: albums-ws
+  name: albums-ws
+  namespace: default
+spec:
+  ports:
+  - name: "8013"
+    port: 8013
+    targetPort: 8013	
+  selector:
+    app: albums-ws
+  sessionAffinity: None
+  type: ClusterIP	  

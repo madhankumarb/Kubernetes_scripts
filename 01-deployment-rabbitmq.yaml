@@ -1,0 +1,64 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    app: rabbit-mq
+  name: rabbit-mq
+  namespace: default
+spec:
+  replicas: 1
+  minReadySeconds: 45
+  selector:
+    matchLabels:
+      app: rabbit-mq
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: rabbit-mq
+    spec:
+      containers:
+      - name: rabbit-mq
+        image: madhanbadridocker/rabbitmq	  
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 15672	
+        - containerPort: 5672	
+        - containerPort: 15671	
+        - containerPort: 5671	
+        - containerPort: 4369				
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: rabbit-mq
+  name: rabbit-mq
+  namespace: default
+spec:
+  ports:
+  - name: "15672"
+    port: 15672
+    targetPort: 15672	
+  - name: "5672"
+    port: 5672
+    targetPort: 5672	
+  - name: "15671"
+    port: 15671
+    targetPort: 15671	
+  - name: "5671"
+    port: 5671
+    targetPort: 5671
+  - name: "4369"
+    port: 4369
+    targetPort: 4369	
+  selector:
+    app: rabbit-mq
+  sessionAffinity: None
+  type: ClusterIP	  
