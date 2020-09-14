@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: gateway-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /albums-ws/*
+        backend:
+          serviceName: albums-ws
+          servicePort: 8013          
+      - path: /user-ws/*
+        backend:
+          serviceName: user-ws
+          servicePort: 8014

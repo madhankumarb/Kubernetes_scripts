@@ -86,8 +86,9 @@ spec:
   ports:
   - name: "8013"
     port: 8013
+    protocol: TCP	
     targetPort: 8013	
   selector:
     app: albums-ws
   sessionAffinity: None
-  type: ClusterIP	  
+  type: NodePort	  

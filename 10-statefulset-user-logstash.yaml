@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
       - name: user-ws
-        image: madhanbadridocker/users-microservice 
+        image: madhanbadridocker/users-microservice:0.0.3 
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8014			
@@ -86,8 +86,9 @@ spec:
   ports:
   - name: "8014"
     port: 8014
+    protocol: TCP	
     targetPort: 8014	
   selector:
     app: user-ws
   sessionAffinity: None
-  type: ClusterIP	  
+  type: NodePort	  
