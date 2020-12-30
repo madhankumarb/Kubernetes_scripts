@@ -29,13 +29,29 @@ spec:
     spec:
       containers:
       - name: albums-ws
-        image: madhanbadridocker/albums-microservice:0.0.1	  
+        image: madhanbadridocker/albums-microservice:0.0.3	  
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 8013			
+        - containerPort: 8013	
+        - name: liveness-port
+          containerPort: 8013		
+        readinessProbe:
+          httpGet:
+            path: /
+            port: liveness-port
+          failureThreshold: 5
+          periodSeconds: 10
+          initialDelaySeconds: 90
+        livenessProbe:
+          httpGet:
+            path: /
+            port: liveness-port
+          failureThreshold: 5
+          periodSeconds: 10
+          initialDelaySeconds: 90		
         env:
         - name: spring.profiles.active
-          value: k8s
+          value: ingress
         - name: spring.rabbitmq.host
           value: rabbit-mq
         - name: spring.rabbitmq.username
@@ -91,4 +107,4 @@ spec:
   selector:
     app: albums-ws
   sessionAffinity: None
-  type: NodePort	  
+  type: LoadBalancer	  

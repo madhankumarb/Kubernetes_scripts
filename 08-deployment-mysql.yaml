@@ -13,7 +13,7 @@ spec:
       storage: 100Mi
 status: {}
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -21,6 +21,9 @@ metadata:
   name: mysql
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: mysql  
   strategy:
     type: Recreate
   template:

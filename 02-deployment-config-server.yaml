@@ -15,7 +15,7 @@ metadata:
   namespace: default
 type: Opaque
 ---  
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -46,7 +46,7 @@ spec:
         - containerPort: 8012			
         env:
         - name: spring.profiles.active
-          value: k8s
+          value: ingress
         - name: spring.rabbitmq.host
           value: rabbit-mq
         - name: spring.rabbitmq.username

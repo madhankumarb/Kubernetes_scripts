@@ -29,13 +29,29 @@ spec:
     spec:
       containers:
       - name: user-ws
-        image: madhanbadridocker/users-microservice:0.0.3 
+        image: madhanbadridocker/users-microservice:0.0.5 
         imagePullPolicy: IfNotPresent
         ports:
-        - containerPort: 8014			
+        - containerPort: 8014	
+        - name: liveness-port
+          containerPort: 8014			
+        readinessProbe:
+          httpGet:
+            path: /
+            port: liveness-port
+          failureThreshold: 5
+          periodSeconds: 10
+          initialDelaySeconds: 90
+        livenessProbe:
+          httpGet:
+            path: /
+            port: liveness-port
+          failureThreshold: 5
+          periodSeconds: 10
+          initialDelaySeconds: 90		
         env:
         - name: spring.profiles.active
-          value: k8s
+          value: ingress
         - name: spring.rabbitmq.host
           value: rabbit-mq
         - name: spring.rabbitmq.username
